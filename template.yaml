@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS Secrets Manager Workshop Resources'
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC where resources will be deployed
+
+Resources:
+  # IAM Policy with necessary permissions for the workshop
+  SecretsManagerWorkshopPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for AWS Secrets Manager Workshop
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'secretsmanager:CreateSecret'
+              - 'secretsmanager:GetSecretValue'
+              - 'secretsmanager:PutSecretValue'
+              - 'secretsmanager:UpdateSecret'
+              - 'secretsmanager:DescribeSecret'
+              - 'secretsmanager:ListSecrets'
+              - 'secretsmanager:TagResource'
+              - 'secretsmanager:RotateSecret'
+            Resource: '*'
+
+  # Role that can be assumed by any IAM user in the account
+  UserAssumeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Ref SecretsManagerWorkshopPolicy
+      RoleName: SecretsManagerWorkshopUserRole
+
+  # Role for EC2 instances
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Ref SecretsManagerWorkshopPolicy
+      RoleName: SecretsManagerWorkshopEC2Role
+
+  # Instance profile for EC2 instances
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2Role
+      InstanceProfileName: SecretsManagerWorkshopInstanceProfile
+
+  # Role for Lambda rotation function
+  LambdaRotationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:DescribeSecret'
+                  - 'secretsmanager:GetSecretValue'
+                  - 'secretsmanager:PutSecretValue'
+                  - 'secretsmanager:UpdateSecretVersionStage'
+                Resource: '*'
+      RoleName: SecretsManagerWorkshopLambdaRole
+
+  # Security group for EC2 instances
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Secrets Manager Workshop EC2 instances
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Allow SSH access
+      Tags:
+        - Key: Name
+          Value: SecretsManagerWorkshopSG
+
+  WorkshopKeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName: "WorkshopKeyPair"
+
+Outputs:
+  UserAssumeRoleArn:
+    Description: ARN of the IAM role that can be assumed by users
+    Value: !GetAtt UserAssumeRole.Arn
+    
+  EC2RoleArn:
+    Description: ARN of the IAM role for EC2 instances
+    Value: !GetAtt EC2Role.Arn
+    
+  EC2InstanceProfileArn:
+    Description: ARN of the EC2 instance profile
+    Value: !GetAtt EC2InstanceProfile.Arn
+    
+  EC2InstanceProfileName:
+    Description: Name of the EC2 instance profile
+    Value: !Ref EC2InstanceProfile
+    
+  LambdaRotationRoleArn:
+    Description: ARN of the IAM role for Lambda rotation function
+    Value: !GetAtt LambdaRotationRole.Arn
+    
+  EC2SecurityGroupId:
+    Description: ID of the security group for EC2 instances
+    Value: !Ref EC2SecurityGroup
