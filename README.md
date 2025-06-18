@@ -21,7 +21,7 @@ In this workshop, you will:
 
 1. Clone this repository
 2. Deploy the CloudFormation template
-3. Follow the step-by-step guide in `step-by-step-demo-guide.md`
+3. Follow the instructions in [step-by-step-demo-guide.md](step-by-step-demo-guide.md)
 
 ## Repository Contents
 
