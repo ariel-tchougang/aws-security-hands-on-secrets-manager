@@ -2,6 +2,8 @@
 
 This repository contains resources for a hands-on workshop on AWS Secrets Manager. The workshop is designed to be completed in under 20 minutes and demonstrates key features of AWS Secrets Manager using the AWS CLI.
 
+![AWS Secrets Manager](aws-secrets-manager.png)
+
 ## Workshop Overview
 
 In this workshop, you will:
